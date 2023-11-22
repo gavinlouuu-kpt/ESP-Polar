@@ -200,25 +200,25 @@ void loop() {
 
 
 
-    // post data ---
-    String urlFinal = "https://script.google.com/macros/s/"+GOOGLE_SCRIPT_ID+"/exec?"+"date=" + asString + "&sensor=" + String(count);
-    Serial.print("POST data to spreadsheet:");
-    Serial.println(urlFinal);
-    HTTPClient http;
-    http.begin(urlFinal.c_str());
-    http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
-    int httpCode = http.GET(); 
-    Serial.print("HTTP Status Code: ");
-    Serial.println(httpCode);
-    //---------------------------------------------------------------------
-    //getting response from google sheet
-    String payload;
-    if (httpCode > 0) {
-        payload = http.getString();
-        // Serial.println("Payload: "+payload);    
-    }
-    //---------------------------------------------------------------------
-    http.end();
+    // // post data ---
+    // String urlFinal = "https://script.google.com/macros/s/"+GOOGLE_SCRIPT_ID+"/exec?"+"date=" + asString + "&sensor=" + String(count);
+    // Serial.print("POST data to spreadsheet:");
+    // Serial.println(urlFinal);
+    // HTTPClient http;
+    // http.begin(urlFinal.c_str());
+    // http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+    // int httpCode = http.GET(); 
+    // Serial.print("HTTP Status Code: ");
+    // Serial.println(httpCode);
+    // //---------------------------------------------------------------------
+    // //getting response from google sheet
+    // String payload;
+    // if (httpCode > 0) {
+    //     payload = http.getString();
+    //     // Serial.println("Payload: "+payload);    
+    // }
+    // //---------------------------------------------------------------------
+    // http.end();
   }
   count++;
   
