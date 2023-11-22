@@ -1,26 +1,34 @@
 #include <Arduino.h>
-/**
- * A BLE client example that is rich in capabilities.
- * There is a lot new capabilities implemented.
- * author unknown
- * updated by chegewara
- */
+#include <credentials.h>
 
+// WiFi library
+#include "WiFi.h"
+#include <HTTPClient.h>
+#include "time.h"
+
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = 19800;
+const int   daylightOffset_sec = 0;
+// WiFi credentials
+const char* ssid = WIFI_SSID;         // change SSID
+const char* password = WIFI_PASSWORD;    // change password
+// Google script ID and required credentials
+String GOOGLE_SCRIPT_ID = G_SCRIPT_ID;    // change Gscript ID
+
+int count = 0;
+
+// BLE Components -------------------------------------------------------------
 #include "BLEDevice.h"
-//#include "BLEScan.h"
-
 // The remote service we wish to connect to.
-static BLEUUID serviceUUID("180D");
+static BLEUUID serviceUUID(SERVICE_UUID);
 // The characteristic of the remote service we are interested in.
-static BLEUUID    charUUID("2A37");
+static BLEUUID    charUUID(CHARACTERISTIC_UUID);
 
 static boolean doConnect = false;
 static boolean connected = false;
 static boolean doScan = false;
 static BLERemoteCharacteristic* pRemoteCharacteristic;
 static BLEAdvertisedDevice* myDevice;
-String pDataStr = "";
-
 
 // Working notifyCallback with data printed out in HEX
 static void notifyCallback(
@@ -35,20 +43,11 @@ static void notifyCallback(
     Serial.print("data: ");
     if (length >= 2) {
       uint16_t data = (pData[0] << 8) | pData[1];  // Concatenate the data
-      Serial.println(data);
+      Serial.print(data);
     }
-    
-    // for (size_t i = 0; i < length; i++) {
-    //   Serial.print(i);
-    //   Serial.print(":");
-    //   Serial.print(pData[i], HEX);
-    //   Serial.print(",");
-    // }
     Serial.println();
 }
 
-
-// Original callback class
 class MyClientCallback : public BLEClientCallbacks {
   void onConnect(BLEClient* pclient) {
   }
@@ -132,8 +131,23 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 
 
 void setup() {
+  delay(1000);
   Serial.begin(115200);
-  Serial.println("Starting Arduino BLE Client application...");
+  delay(1000);
+  // connect to WiFi
+  Serial.println();
+  Serial.print("Connecting to wifi: ");
+  Serial.println(ssid);
+  Serial.flush();
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  // Init and get the time
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+
+  // BLE setup ----------------------------------------------------------------
   BLEDevice::init("");
 
   // Retrieve a Scanner and set the callback we want to use to be informed when we
@@ -145,16 +159,11 @@ void setup() {
   pBLEScan->setWindow(449);
   pBLEScan->setActiveScan(true);
   pBLEScan->start(5, false);
-} // End of setup.
 
-
-// This is the Arduino main loop function.
+}
 void loop() {
-
-  // If the flag "doConnect" is true then we have scanned for and found the desired
-  // BLE Server with which we wish to connect.  Now we connect to it.  Once we are 
-  // connected we set the connected flag to be true.
-  if (doConnect == true) {
+  // ble connection
+   if (doConnect == true) {
     if (connectToServer()) {
       Serial.println("We are now connected to the BLE Server.");
     } else {
@@ -174,6 +183,44 @@ void loop() {
   }else if(doScan){
     BLEDevice::getScan()->start(0);  // this is just example to start scan after disconnect, most likely there is better way to do it in arduino
   }
+
+   if (WiFi.status() == WL_CONNECTED) {
+    static bool flag = false;
+    struct tm timeinfo;
+    if (!getLocalTime(&timeinfo)) {
+      Serial.println("Failed to obtain time");
+      return;
+    }
+    char timeStringBuff[50]; //50 chars should be enough
+    strftime(timeStringBuff, sizeof(timeStringBuff), "%A, %B %d %Y %H:%M:%S", &timeinfo);
+    String asString(timeStringBuff);
+    asString.replace(" ", "-");
+    Serial.print("Time:");
+    Serial.println(asString);
+
+
+
+    // post data ---
+    String urlFinal = "https://script.google.com/macros/s/"+GOOGLE_SCRIPT_ID+"/exec?"+"date=" + asString + "&sensor=" + String(count);
+    Serial.print("POST data to spreadsheet:");
+    Serial.println(urlFinal);
+    HTTPClient http;
+    http.begin(urlFinal.c_str());
+    http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+    int httpCode = http.GET(); 
+    Serial.print("HTTP Status Code: ");
+    Serial.println(httpCode);
+    //---------------------------------------------------------------------
+    //getting response from google sheet
+    String payload;
+    if (httpCode > 0) {
+        payload = http.getString();
+        // Serial.println("Payload: "+payload);    
+    }
+    //---------------------------------------------------------------------
+    http.end();
+  }
+  count++;
   
-  delay(1000); // Delay a second between loops.
-} // End of loop
+  delay(1000);
+} 

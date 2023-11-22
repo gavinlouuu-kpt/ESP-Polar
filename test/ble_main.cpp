@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <credentials.h>
 /**
  * A BLE client example that is rich in capabilities.
  * There is a lot new capabilities implemented.
@@ -10,15 +11,20 @@
 //#include "BLEScan.h"
 
 // The remote service we wish to connect to.
-static BLEUUID serviceUUID("180D");
+static BLEUUID serviceUUID(SERVICE_UUID);
 // The characteristic of the remote service we are interested in.
-static BLEUUID    charUUID("2A37");
+static BLEUUID    charUUID(CHARACTERISTIC_UUID);
 
 static boolean doConnect = false;
 static boolean connected = false;
 static boolean doScan = false;
 static BLERemoteCharacteristic* pRemoteCharacteristic;
 static BLEAdvertisedDevice* myDevice;
+// Define lastScanTime in the global scope
+unsigned long lastScanTime = 0;
+// Define the scan interval (e.g., 10 seconds)
+const unsigned long scanInterval = 10000;
+
 
 // Working notifyCallback with data printed out in HEX
 static void notifyCallback(
@@ -31,17 +37,10 @@ static void notifyCallback(
     Serial.print(" of data length ");
     Serial.println(length);
     Serial.print("data: ");
-    Serial.print(pData[0], HEX);
-    Serial.print('X');
-    Serial.print(pData[1], HEX);
-
-    // for (size_t i = 0; i < length; i++) {
-    //   Serial.print(i);
-    //   Serial.print(":");
-    //   Serial.print(pData[i], HEX);
-    //   Serial.print(",");
-    // }
-    
+    if (length >= 2) {
+      uint16_t data = (pData[0] << 8) | pData[1];  // Concatenate the data
+      Serial.print(data);
+    }
     Serial.println();
 }
 
@@ -143,6 +142,9 @@ void setup() {
   pBLEScan->setWindow(449);
   pBLEScan->setActiveScan(true);
   pBLEScan->start(5, false);
+
+  // 
+
 } // End of setup.
 
 
